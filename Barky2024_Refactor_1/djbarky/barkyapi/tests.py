@@ -7,6 +7,8 @@ from rest_framework.test import APIRequestFactory, APITestCase
 from .models import Bookmark
 from .views import BookmarkViewSet
 
+from django.utils import timezone
+
 # Create your tests here.
 # test plan
 
@@ -94,6 +96,46 @@ class BookmarkTests(APITestCase):
         )
         self.assertTrue(status.is_success(response.status_code))
         self.assertEqual(response.data["title"], "Awesomer Django")
+
+    # list bookmarks by title
+    def test_list_bookmarks_by_title(self):
+        """
+        List bookmarks created by title
+        """
+        Bookmark.objects.create(title="Github", url="https://github.com/")
+        Bookmark.objects.create(title="Google", url="https://google.com/")
+        response = self.client.get(self.list_url + "?ordering=title")
+        
+        self.assertTrue(status.is_success(response.status_code))
+        self.assertEqual(response.data["results"][0]["title"], "Awesome Django")
+        self.assertEqual(response.data["results"][1]["title"], "Github")
+        self.assertEqual(response.data["results"][2]["title"], "Google")
+
+    # list bookmarks by date
+    def test_list_bookmarks_by_date(self):
+        """
+        List bookmarks by date
+        """
+        Bookmark.objects.create(title="Github", url="https://github.com/", date_added=timezone.now() - timezone.timedelta(days=2))
+        Bookmark.objects.create(title="Google", url="https://google.com/", date_added=timezone.now() - timezone.timedelta(days=1))
+
+        response = self.client.get(self.list_url + "?ordering=date_added")
+
+        self.assertTrue(status.is_success(response.status_code))
+
+        data = response.json()
+
+        self.assertLessEqual(data["results"][0]["date_added"], data["results"][1]["date_added"])
+        self.assertLessEqual(data["results"][1]["date_added"], data["results"][2]["date_added"])
+
+    # test bookmarks url works
+    def test_bookmarks_url(self):
+        """
+        Ensure bookmars url is pointing to correct place
+        """
+        url = reverse('barkyapi:bookmark-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
 
 
 # 6. create a snippet
